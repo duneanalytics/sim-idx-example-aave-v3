@@ -1,10 +1,6 @@
 import { eq } from "drizzle-orm";
-import { poolCreated } from "./db/schema/Listener"; // Adjust the import path as necessary
+import { borrow } from "./db/schema/Listener"; // Adjust the import path as necessary
 import { types, db, App } from "@duneanalytics/sim-idx"; // Import schema to ensure it's registered
-
-const filterToken0 = types.Address.from(
-  "7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9"
-);
 
 const app = App.create();
 app.get("/*", async (c) => {
@@ -12,8 +8,7 @@ app.get("/*", async (c) => {
     const result = await db
       .client(c)
       .select()
-      .from(poolCreated)
-      .where(eq(poolCreated.token0, filterToken0))
+      .from(borrow)
       .limit(5);
 
     return Response.json({

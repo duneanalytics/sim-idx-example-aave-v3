@@ -3,35 +3,55 @@ pragma solidity ^0.8.13;
 
 import "sim-idx-sol/Simidx.sol";
 import "sim-idx-generated/Generated.sol";
+import "./interfaces/ITotalSupply.sol";
+import "./interfaces/IPool.sol";
+import "./types/DataTypes.sol";
 
 contract Triggers is BaseTriggers {
     function triggers() external virtual override {
         Listener listener = new Listener();
-        addTrigger(chainContract(Chains.Ethereum, 0x1F98431c8aD98523631AE4a59f267346ea31F984), listener.triggerOnCreatePoolFunction());
-        addTrigger(chainContract(Chains.Unichain, 0x1F98400000000000000000000000000000000003), listener.triggerOnCreatePoolFunction());
-        addTrigger(chainContract(Chains.Base, 0x33128a8fC17869897dcE68Ed026d694621f6FDfD), listener.triggerOnCreatePoolFunction());
+        addTrigger(chainAbi(Chains.Ethereum, AAVEV3Pool$Abi()), listener.triggerOnBorrowEvent());
+        addTrigger(chainAbi(Chains.Base, AAVEV3Pool$Abi()), listener.triggerOnBorrowEvent());
+        addTrigger(chainAbi(Chains.Soneium, AAVEV3Pool$Abi()), listener.triggerOnBorrowEvent());
     }
 }
 
-/// Index calls to the UniswapV3Factory.createPool function on Ethereum
-/// To hook on more function calls, specify that this listener should implement that interface and follow the compiler errors.
-contract Listener is UniswapV3Factory$OnCreatePoolFunction {
-    /// Emitted events are indexed.
-    /// To change the data which is indexed, modify the event or add more events.
-    event PoolCreated(uint64 chainId, address caller, address pool, address token0, address token1, uint24 fee);
+/// Index calls to the AAVEV3Pool.borrow function on Ethereum, Base, and Soneium
+contract Listener is AAVEV3Pool$OnBorrowEvent {
+    struct BorrowEvent {
+        bytes32 txnHash;
+        uint64 chainId;
+        uint64 blockNumber;
+        uint64 blockTimestamp;
+        address reserve;
+        address user;
+        address onBehalfOf;
+        uint256 amount;
+        uint64 interestRateMode;
+        uint256 borrowRate;
+        uint64 referralCode;
+        uint256 totalSupply;
+    }
 
-    /// The handler called whenever the UniswapV3Factory.createPool function is called.
-    /// Within here you write your indexing specific logic (e.g., call out to other contracts to get more information).
-    /// The only requirement for handlers is that they have the correct signature, but usually you will use generated interfaces to help write them.
-    function onCreatePoolFunction(
-        FunctionContext memory ctx,
-        UniswapV3Factory$CreatePoolFunctionInputs memory inputs,
-        UniswapV3Factory$CreatePoolFunctionOutputs memory outputs
-    )
-        external
-        override
-    {
-        emit PoolCreated(uint64(block.chainid), ctx.txn.call.callee, outputs.pool, inputs.tokenA, inputs.tokenB, inputs.fee);
+    event Borrow(BorrowEvent);
+
+    function onBorrowEvent(EventContext memory ctx, AAVEV3Pool$BorrowEventParams memory inputs) external override {
+        emit Borrow(
+            BorrowEvent(
+                ctx.txn.hash,
+                uint64(block.chainid),
+                uint64(block.number),
+                uint64(block.timestamp),
+                inputs.reserve,
+                inputs.user,
+                inputs.onBehalfOf,
+                inputs.amount,
+                inputs.interestRateMode,
+                inputs.borrowRate,
+                inputs.referralCode,
+                ITotalSupply(IPool(ctx.txn.call.callee).getReserveData(inputs.reserve).variableDebtTokenAddress)
+                    .totalSupply()
+            )
+        );
     }
 }
-
