@@ -3,11 +3,17 @@ import { pgEnum, pgTable as table } from "drizzle-orm/pg-core";
 import * as t from "drizzle-orm/pg-core";
 import { db, types } from "@duneanalytics/sim-idx";
 
-export const poolCreated = table("pool_created", {
+export const borrow = table("borrow", {
+  txnHash: db.bytes32('txn_hash'),
   chainId: db.uint64('chain_id'),
-  caller: db.address('caller'),
-  pool: db.address('pool'),
-  token0: db.address('token0'),
-  token1: db.address('token1'),
-  fee: db.uint24('fee'),
+  blockNumber: db.uint64('block_number'),
+  blockTimestamp: db.uint64('block_timestamp'),
+  reserve: db.address('reserve'),
+  user: db.address('user'),
+  onBehalfOf: db.address('on_behalf_of'),
+  amount: db.uint256('amount'),
+  interestRateMode: db.uint8('interest_rate_mode'),
+  borrowRate: db.uint256('borrow_rate'),
+  referralCode: db.uint16('referral_code'),
+  totalSupply: db.uint256('total_supply'),
 })
